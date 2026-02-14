@@ -7,69 +7,69 @@ app.use(express.json());
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const OPENAI_KEY = process.env.OPENAI_KEY;
 
-/* HEALTH CHECK PARA RAILWAY */
+// health check (Railway necesita esto)
 app.get("/", (req, res) => {
-res.status(200).send("Bot activo");
+  res.status(200).send("Bot activo");
 });
 
-/* WEBHOOK TELEGRAM */
 app.post("/webhook", async (req, res) => {
-try {
-
-```
-const msg = req.body?.message;
-if (!msg || !msg.chat) return res.sendStatus(200);
-
-const chatId = msg.chat.id;
-const message = msg.text || "";
-
-let reply = "Ahorita ando ocupada 🙈, escríbeme en un ratito";
-
-/* IA (si hay saldo) */
-if (OPENAI_KEY) {
   try {
-    const ai = await axios.post(
-      "https://api.openai.com/v1/responses",
+    const msg = req.body?.message;
+    if (!msg || !msg.chat) return res.sendStatus(200);
+
+    const chatId = msg.chat.id;
+    const message = msg.text || "";
+
+    let reply = "Ahorita ando ocupada 🙈, escríbeme en un ratito";
+
+    // SOLO si hay API KEY intenta usar OpenAI
+    if (OPENAI_KEY) {
+      try {
+        const ai = await axios.post(
+          "https://api.openai.com/v1/responses",
+          {
+            model: "gpt-4.1-mini",
+            input: [
+              {
+                role: "system",
+                content:
+                  "Eres Monse, influencer mexicana de 22 años, coqueta, natural y conversadora.",
+              },
+              { role: "user", content: message },
+            ],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${OPENAI_KEY}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        reply =
+          ai.data?.output?.[0]?.content?.[0]?.text ||
+          reply;
+      } catch (e) {
+        console.log("OpenAI error o sin saldo");
+      }
+    }
+
+    await axios.post(
+      `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
       {
-        model: "gpt-4.1-mini",
-        input: [
-          { role: "system", content: "Eres Monse, influencer mexicana de 22 años, coqueta, natural y conversadora." },
-          { role: "user", content: message }
-        ]
-      },
-      {
-        headers: {
-          "Authorization": `Bearer ${OPENAI_KEY}`,
-          "Content-Type": "application/json"
-        }
+        chat_id: chatId,
+        text: reply,
       }
     );
 
-    reply = ai.data?.output?.[0]?.content?.[0]?.text || reply;
-  } catch (e) {
-    console.log("OpenAI sin saldo o error");
+    res.sendStatus(200);
+  } catch (err) {
+    console.log("Webhook error:", err.message);
+    res.sendStatus(200);
   }
-}
-
-/* RESPUESTA TELEGRAM */
-await axios.post(
-  `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
-  {
-    chat_id: chatId,
-    text: reply
-  }
-);
-
-res.sendStatus(200);
-```
-
-} catch (err) {
-console.log("Webhook error:", err.message);
-res.sendStatus(200);
-}
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
-console.log("Servidor listo en puerto " + PORT);
+  console.log("Servidor listo en puerto " + PORT);
 });
