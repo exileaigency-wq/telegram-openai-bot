@@ -10,50 +10,43 @@ const OPENAI_KEY = process.env.OPENAI_KEY;
 app.get("/", (req, res) => res.send("Bot activo"));
 
 app.post("/webhook", async (req, res) => {
-try {
 const msg = req.body?.message;
 if (!msg || !msg.chat) return res.sendStatus(200);
 
-```
 const chatId = msg.chat.id;
-const message = msg.text || "";
+const text = msg.text || "Hola";
 
 let reply = "Hola 😊";
 
 if (OPENAI_KEY) {
-  try {
-    const ai = await axios.post(
-      "https://api.openai.com/v1/responses",
-      {
-        model: "gpt-4.1-mini",
-        input: [
-          { role: "system", content: "Eres Monse, influencer mexicana coqueta y natural." },
-          { role: "user", content: message }
-        ]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENAI_KEY}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+try {
+const response = await axios.post(
+"https://api.openai.com/v1/responses",
+{
+model: "gpt-4.1-mini",
+input: text
+},
+{
+headers: {
+Authorization: `Bearer ${OPENAI_KEY}`,
+"Content-Type": "application/json"
+}
+}
+);
 
-    reply = ai.data?.output?.[0]?.content?.[0]?.text || reply;
-  } catch {}
+```
+  reply = response.data?.output?.[0]?.content?.[0]?.text || reply;
+} catch {}
+```
+
 }
 
 await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-  chat_id: chatId,
-  text: reply
+chat_id: chatId,
+text: reply
 });
 
 res.sendStatus(200);
-```
-
-} catch {
-res.sendStatus(200);
-}
 });
 
 const PORT = process.env.PORT || 3000;
