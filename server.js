@@ -9,8 +9,11 @@ app.get("/", (req, res) => {
 res.status(200).send("Bot activo");
 });
 
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const OPENAI_KEY = process.env.OPENAI_KEY;
+const msg = req.body?.message;
+if (!msg || !msg.chat) return res.sendStatus(200);
+
+const chatId = msg.chat.id;
+const message = msg.text || "";
 
 app.post("/webhook", async (req, res) => {
 try {
