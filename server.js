@@ -36,7 +36,7 @@ try {
     },
     {
       headers: {
-        Authorization: `Bearer ${OPENAI_KEY}`,
+        "Authorization": Bearer ${OPENAI_KEY},
         "Content-Type": "application/json"
       }
     }
