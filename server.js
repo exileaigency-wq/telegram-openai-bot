@@ -12,7 +12,6 @@ try {
 const message = req.body.message?.text;
 const chatId = req.body.message?.chat?.id;
 
-```
 if (!message) return res.sendStatus(200);
 
 const ai = await axios.post(
@@ -49,13 +48,13 @@ await axios.post(
 );
 
 res.sendStatus(200);
-```
 
 } catch (error) {
 console.log(error.response?.data || error.message);
 res.sendStatus(500);
 }
 });
+
 
 app.get("/", (req, res) => res.send("Bot activo"));
 
