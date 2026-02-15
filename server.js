@@ -7,30 +7,26 @@ app.use(express.json());
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const OPENAI_KEY = process.env.OPENAI_KEY;
 
-/* HEALTHCHECK (Railway) */
+/* ---------- Health check (Railway) ---------- */
 app.get("/", (req, res) => {
-  res.status(200).send("Bot activo");
+  res.status(200).send("OK");
 });
 
-/* WEBHOOK TELEGRAM */
+/* ---------- Webhook ---------- */
 app.post("/webhook", async (req, res) => {
-  // MUY IMPORTANTE: responder inmediatamente a Telegram
-  res.sendStatus(200);
-
   try {
+    console.log("UPDATE:", JSON.stringify(req.body));
+
     const msg = req.body?.message;
-    if (!msg) return;
+    if (!msg) return res.sendStatus(200);
 
     const chatId = msg.chat.id;
     const text = msg.text || "";
 
-    let reply = "🙈 ando ocupada pero aquí ando jiji";
+    let reply = "hola 👀";
 
-    // /start siempre responde aunque OpenAI falle
-    if (text === "/start") {
-      reply = "Holii soy Monse 💕 ¿cómo te llamas?";
-    } else {
-
+    /* ---------- OpenAI ---------- */
+    if (OPENAI_KEY) {
       try {
         const ai = await axios.post(
           "https://api.openai.com/v1/responses",
@@ -40,14 +36,17 @@ app.post("/webhook", async (req, res) => {
               {
                 role: "system",
                 content:
-                  "Eres Monse, influencer mexicana de 22 años, coqueta, natural, divertida, hablas casual como chat real, mensajes cortos tipo WhatsApp."
+                  "Eres Monse, influencer mexicana de 22 años, coqueta, natural y conversadora."
               },
-              { role: "user", content: text }
+              {
+                role: "user",
+                content: text
+              }
             ]
           },
           {
             headers: {
-              "Authorization": `Bearer ${OPENAI_KEY}`,
+              Authorization: `Bearer ${OPENAI_KEY}`,
               "Content-Type": "application/json"
             }
           }
@@ -55,14 +54,14 @@ app.post("/webhook", async (req, res) => {
 
         reply =
           ai.data?.output?.[0]?.content?.[0]?.text ||
+          ai.data?.output_text ||
           reply;
-
       } catch (e) {
-        console.log("Error OpenAI:", e.response?.data || e.message);
+        console.log("OpenAI error:", e.response?.data || e.message);
       }
     }
 
-    // enviar respuesta a telegram
+    /* ---------- Telegram response ---------- */
     await axios.post(
       `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
       {
@@ -71,13 +70,16 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
+    res.sendStatus(200);
   } catch (err) {
-    console.log("Webhook crash:", err.message);
+    console.log("Webhook fatal error:", err);
+    res.sendStatus(200);
   }
 });
 
-/* START SERVER */
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Servidor corriendo en puerto " + PORT);
+/* ---------- IMPORTANT: Railway port ---------- */
+const PORT = process.env.PORT;
+
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
 });
