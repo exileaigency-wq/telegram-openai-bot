@@ -7,73 +7,63 @@ app.use(express.json());
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const OPENAI_KEY = process.env.OPENAI_KEY;
 
-/* HEALTHCHECK */
+/* ---------- TEST RAILWAY ---------- */
 app.get("/", (req, res) => {
-  res.send("Bot activo");
+res.status(200).send("ok");
 });
 
-/* WEBHOOK TELEGRAM */
+/* ---------- WEBHOOK ---------- */
 app.post("/webhook", async (req, res) => {
+try {
+const msg = req.body?.message;
+if (!msg) return res.sendStatus(200);
+
+```
+const chatId = msg.chat.id;
+const text = msg.text || "";
+
+console.log("MENSAJE:", text);
+
+let reply = "ando ocupada 🙈";
+
+if (OPENAI_KEY && text) {
   try {
-    const msg = req.body?.message;
-    if (!msg || !msg.chat) return res.sendStatus(200);
-
-    const chatId = msg.chat.id;
-    const userText = msg.text || "";
-
-    let reply = "Escríbeme otra vez 🙈";
-
-    try {
-      const ai = await axios.post(
-        "https://api.openai.com/v1/responses",
-        {
-          model: "gpt-4.1-mini",
-          input: [
-            {
-              role: "system",
-              content:
-                "Eres Monse, influencer mexicana de 22 años, coqueta, natural y conversadora.",
-            },
-            {
-              role: "user",
-              content: userText,
-            },
-          ],
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${OPENAI_KEY}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      /* 🔴 PARSEO SEGURO (LA CLAVE DEL 502) */
-      reply =
-        ai.data?.output_text ||
-        ai.data?.output?.[0]?.content?.[0]?.text ||
-        "jeje no supe que decir 😅";
-    } catch (err) {
-      console.log("OpenAI error:", err.response?.data || err.message);
-      reply = "Ahorita ando ocupada 🙈";
-    }
-
-    await axios.post(
-      `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
+    const ai = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
       {
-        chat_id: chatId,
-        text: reply,
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Eres Monse, influencer mexicana de 22 años, coqueta, natural y relajada." },
+          { role: "user", content: text }
+        ]
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${OPENAI_KEY}`,
+          "Content-Type": "application/json"
+        }
       }
     );
 
-    res.sendStatus(200);
+    reply = ai.data.choices[0].message.content;
   } catch (err) {
-    console.log("Webhook fatal:", err.message);
-    res.sendStatus(200);
+    console.log("ERROR OPENAI:", err.response?.data || err.message);
   }
+}
+
+await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+  chat_id: chatId,
+  text: reply
+});
+
+return res.sendStatus(200);
+```
+
+} catch (err) {
+console.log("ERROR GENERAL:", err);
+return res.sendStatus(200);
+}
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Servidor corriendo en puerto " + PORT);
-});
+app.listen(PORT, "0.0.0.0", () => console.log("RUNNING", PORT));
